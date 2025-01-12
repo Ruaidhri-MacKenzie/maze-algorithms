@@ -88,9 +88,7 @@ export const generateMazeStepDFS = (mazeState) => {
 	}
 	else if (mazeState.path.length > 0) {
 		mazeState.path.pop();
-	}
-	else {
-		mazeState.isGenerated = true;
+		if (mazeState.path.length === 0) mazeState.isGenerated = true;
 	}
 
 	return mazeState.isGenerated;
@@ -98,7 +96,6 @@ export const generateMazeStepDFS = (mazeState) => {
 
 export const generateMazeDFS = (mazeState) => {
 	while (!generateMazeStepDFS(mazeState));
-	mazeState.isGenerated = true;
 };
 
 export const initMazePrim = (mazeState) => {
@@ -138,7 +135,6 @@ export const generateMazeStepPrim = (mazeState) => {
 
 export const generateMazePrim = (mazeState) => {
 	while (!generateMazeStepPrim(mazeState));
-	mazeState.isGenerated = true;
 };
 
 const randomWalkStep = (mazeState) => {
@@ -218,5 +214,4 @@ export const generateMazeStepWilson = (mazeState) => {
 
 export const generateMazeWilson = (mazeState) => {
 	while (!generateMazeStepWilson(mazeState));
-	mazeState.isGenerated = true;
 };
