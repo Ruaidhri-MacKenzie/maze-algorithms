@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Maze Generator</title>
+	<link rel="shortcut icon" href="img/favicon.png" type="image/png">
+	<link rel="stylesheet" href="style.css">
+	<script type="module" src="main.js"></script>
+</head>
+<body>
+	<div id="layout">
+		<header>
+			<h1>Maze Generator</h1>
+		</header>
+
+		<main>
+			<aside>
+				<h2>Controls</h2>
+
+				<div class="control-section">
+					<h3>Generate</h3>
+					<select id="generate-select">
+						<option value="backtrack">Recursive Backtracking</option>
+						<option value="prim">Prim's Algorithm</option>
+						<option value="wilson">Wilson's Algorithm</option>
+						<option value="fractal" disabled>Fractal Tessellation</option>
+					</select>
+					<button id="generate-button"><img src="img/generate.png">Generate</button>
+					<button id="generate-play-button"><img src="img/play.png">Play</button>
+					<button id="generate-step-button"><img src="img/step.png">Step</button>
+					<button id="generate-reset-button"><img src="img/reset.png">Reset</button>
+				</div>
+
+				<div class="control-section">
+					<h3>Solve</h3>
+					<select id="solve-select">
+						<option value="dfs">Depth First Search</option>
+						<option value="dijkstra" disabled>Dijkstra's Algorithm</option>
+						<option value="astar" disabled>A*</option>
+					</select>
+					<button id="solve-button"><img src="img/solve.png">Solve</button>
+					<button id="solve-play-button"><img src="img/play.png">Play</button>
+					<button id="solve-step-button"><img src="img/step.png">Step</button>
+					<button id="solve-reset-button"><img src="img/reset.png">Reset</button>
+				</div>
+			</aside>
+
+			<canvas id="maze"></canvas>
+		</main>
+		
+		<footer>
+			<p>Ruaidhri MacKenzie &copy; 2024</p>
+		</footer>
+	</div>
+</body>
+</html>
