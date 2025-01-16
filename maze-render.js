@@ -28,18 +28,18 @@ export const drawMaze = (canvas, mazeState, solveState) => {
 
 	for (let i = 0; i < mazeState.frontiers.length; i++) {
 		// Frontier
-		const [node, connection] = mazeState.frontiers[i];
+		const [node, edge] = mazeState.frontiers[i];
 		ctx.fillStyle = "#555555";
 		ctx.fillRect(node.x * tileSize, node.y * tileSize, tileSize, tileSize);
-		ctx.fillRect(connection.x * tileSize, connection.y * tileSize, tileSize, tileSize);
+		ctx.fillRect(edge.x * tileSize, edge.y * tileSize, tileSize, tileSize);
 	}
 
 	for (let i = 0; i < mazeState.path.length; i++) {
 		// Random Walk
-		const [node, connection] = mazeState.path[i];
+		const [node, edge] = mazeState.path[i];
 		ctx.fillStyle = "#5555ff";
 		ctx.fillRect(node.x * tileSize, node.y * tileSize, tileSize, tileSize);
-		ctx.fillRect(connection.x * tileSize, connection.y * tileSize, tileSize, tileSize);
+		ctx.fillRect(edge.x * tileSize, edge.y * tileSize, tileSize, tileSize);
 	}
 
 	for (let i = 0; i < solveState.path.length; i++) {
