@@ -18,7 +18,7 @@ export const resetMazeState = (mazeState, columns, rows) => {
 	mazeState.frontiers = [];
 	mazeState.unvisited = [];
 	mazeState.path = [];
-	mazeState.lastDirection = { x: null, y: null };
+	mazeState.lastDirection = { dx: 0, dy: 0 };
 };
 
 export const createMazeState = (columns, rows) => {
@@ -73,18 +73,18 @@ export const generateMazeStepDFS = (mazeState) => {
 	for (let i = 0; i < directions.length; i++) {
 		const direction = directions[i];
 		const newNode = { x: currentNode.x + (direction.dx * 2), y: currentNode.y + (direction.dy * 2) };
-		const newConnection = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
+		const newEdge = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
 		if (isUnvisited(mazeState, newNode)) {
-			neighbours.push([newNode, newConnection]);
+			neighbours.push([newNode, newEdge]);
 		}
 	}
 
 	if (neighbours.length > 0) {
-		const [node, connection] = neighbours[Math.floor(Math.random() * neighbours.length)];
-		mazeState.path.push([node, connection]);
+		const [node, edge] = neighbours[Math.floor(Math.random() * neighbours.length)];
+		mazeState.path.push([node, edge]);
 		removeFromUnvisited(mazeState, node);
 		setPassage(mazeState, node);
-		setPassage(mazeState, connection);
+		setPassage(mazeState, edge);
 	}
 	else if (mazeState.path.length > 0) {
 		mazeState.path.pop();
@@ -110,19 +110,19 @@ export const generateMazeStepPrim = (mazeState) => {
 	}
 
 	const randomIndex = Math.floor(Math.random() * mazeState.frontiers.length);
-	const [node, connection] = mazeState.frontiers[randomIndex];
+	const [node, edge] = mazeState.frontiers[randomIndex];
 
 	// Check Frontiers
 	if (isWall(mazeState, node)) {
 		setPassage(mazeState, node);
-		setPassage(mazeState, connection);
+		setPassage(mazeState, edge);
 
 		for (let i = 0; i < directions.length; i++) {
 			const direction = directions[i];
 			const nextNode = { x: node.x + (direction.dx * 2), y: node.y + (direction.dy * 2) };
-			const nextConnection = { x: node.x + direction.dx, y: node.y + direction.dy };
+			const nextEdge = { x: node.x + direction.dx, y: node.y + direction.dy };
 			if (isInBounds(mazeState, nextNode) && isWall(mazeState, nextNode)) {
-				mazeState.frontiers.push([nextNode, nextConnection]);
+				mazeState.frontiers.push([nextNode, nextEdge]);
 			}
 		}
 	}
@@ -141,30 +141,45 @@ const randomWalkStep = (mazeState) => {
 	if (mazeState.path.length === 0) return true;
 
 	const currentNode = mazeState.path[mazeState.path.length - 1][0];
-	let direction = null;
-	do {
-		direction = directions[Math.floor(Math.random() * directions.length)];
-	}
-	while ((direction.dx !== 0 && direction.dx === mazeState.lastDirection.dx * -1) || (direction.dy !== 0 && direction.dy === mazeState.lastDirection.dy * -1));
-	mazeState.lastDirection = direction;
+
+	const walkDirections = directions.filter(direction => {
+		return ((direction.dx === -1 && currentNode.x - 2 >= 0 && mazeState.lastDirection.dx !== 1)
+		|| (direction.dx === 1 && currentNode.x + 2 < mazeState.columns && mazeState.lastDirection.dx !== -1)
+		|| (direction.dy === -1 && currentNode.y - 2 >= 0 && mazeState.lastDirection.dy !== 1)
+		|| (direction.dy === 1 && currentNode.y + 2 < mazeState.rows && mazeState.lastDirection.dy !== -1));
+	});
+	
+	const direction = walkDirections[Math.floor(Math.random() * walkDirections.length)];
+	mazeState.lastDirection = { ...direction };
 
 	const nextNode = { x: currentNode.x + (direction.dx * 2), y: currentNode.y + (direction.dy * 2) };
-	const nextConnection = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
-	if (!isInBounds(mazeState, nextNode)) return false;
+	const nextEdge = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
 
-	// Next node has been visited
+	// Next node has been visited - random walk ends and path will be added to the maze
 	if (!isUnvisited(mazeState, nextNode)) {
-		mazeState.path.push([nextNode, nextConnection]);
+		mazeState.path.push([nextNode, nextEdge]);
 		return true;
 	}
 
-	const duplicatePathElement = mazeState.path.find(([node, connection]) => node.x === nextNode.x && node.y === nextNode.y);
+	// Loop-erase - when the random walk collides with a node in it's existing path it erases the path after that node
+	const duplicatePathElement = mazeState.path.find(([node, edge]) => node.x === nextNode.x && node.y === nextNode.y);
 	if (duplicatePathElement != null) {
 		const index = mazeState.path.indexOf(duplicatePathElement);
 		mazeState.path.splice(index + 1);
+		if (mazeState.path.length < 2) {
+			mazeState.lastDirection = { dx: 0, dy: 0 };
+		}
+		else {
+			const lastNode = mazeState.path[index][0];
+			const secondLastNode = mazeState.path[index - 1][0];
+			if (lastNode.x < secondLastNode.x) mazeState.lastDirection = { dx: -1, dy: 0 };
+			else if (lastNode.x > secondLastNode.x) mazeState.lastDirection = { dx: 1, dy: 0 };
+			else if (lastNode.y < secondLastNode.y) mazeState.lastDirection = { dx: 0, dy: -1 };
+			else if (lastNode.y > secondLastNode.y) mazeState.lastDirection = { dx: 0, dy: 1 };
+		}
 	}
 	else {
-		mazeState.path.push([nextNode, nextConnection]);
+		mazeState.path.push([nextNode, nextEdge]);
 	}
 
 	return false;
@@ -200,10 +215,10 @@ export const generateMazeStepWilson = (mazeState) => {
 	if (randomWalkStep(mazeState)) {
 		// Add the vertices and edges touched in the random walk to the UST.
 		for (let i = 0; i < mazeState.path.length; i++) {
-			const [node, connection] = mazeState.path[i];
+			const [node, edge] = mazeState.path[i];
 			removeFromUnvisited(mazeState, node);
 			setPassage(mazeState, node);
-			setPassage(mazeState, connection);
+			setPassage(mazeState, edge);
 		}
 		mazeState.path = [];
 		if ((mazeState.unvisited.length === 0)) mazeState.isGenerated = true;
