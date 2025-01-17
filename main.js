@@ -1,21 +1,22 @@
 import { createMazeState, resetMazeState,
 	initMazeDFS, generateMazeStepDFS, generateMazeDFS,
 	initMazePrim, generateMazeStepPrim, generateMazePrim,
-	initMazeWilson, generateMazeStepWilson, generateMazeWilson
+	initMazeWilson, generateMazeStepWilson, generateMazeWilson,
+	initMazeKruskal, generateMazeStepKruskal, generateMazeKruskal
 } from "./maze-generate.js";
 import { createSolveState, resetSolveState, solveMazeDFS } from "./maze-solve.js";
-import { resizeCanvas, drawMaze } from "./maze-render.js";
+import { resizeCanvas, drawDFS, drawPrim, drawWilson, drawKruskal, drawGeneratedMaze } from "./maze-render.js";
 
 // DOM
 const canvas = document.getElementById("maze");
 const generateButton = document.getElementById("generate-button");
-const generatePlayButton = document.getElementById("generate-play-button");
+const playGenerationButton = document.getElementById("generate-play-button");
 const generateStepButton = document.getElementById("generate-step-button");
-const generateResetButton = document.getElementById("generate-reset-button");
+const resetGenerationButton = document.getElementById("generate-reset-button");
 const solveButton = document.getElementById("solve-button");
 const solvePlayButton = document.getElementById("solve-play-button");
 const solveStepButton = document.getElementById("solve-step-button");
-const solveResetButton = document.getElementById("solve-reset-button");
+const resetSolutionButton = document.getElementById("solve-reset-button");
 const generateSelect = document.getElementById("generate-select");
 const solveSelect = document.getElementById("solve-select");
 
@@ -33,53 +34,21 @@ const resetState = (mazeState, solveState, columns, rows) => {
 	resetSolveState(solveState);
 };
 
-let generateStepInterval = null;
-
-const generatePause = () => {
-	clearInterval(generateStepInterval);
-	generateStepInterval = null;
-	generatePlayButton.innerHTML = `<img src="img/play.png">Play`;
-};
-
-const generatePlay = (mazeState, solveState) => {
-	generateStepInterval = setInterval(() => {
-		if (generateSelect.value === "prim") {
-			if (generateMazeStepPrim(mazeState)) generatePause();
-		}
-		else if (generateSelect.value === "wilson") {
-			if (generateMazeStepWilson(mazeState)) generatePause();
-		}
-		else {
-			if (generateMazeStepDFS(mazeState)) generatePause();
-		}
-		drawMaze(canvas, mazeState, solveState);
-	}, 1000 / stepsPerSecond);
-	generatePlayButton.innerHTML = `<img src="img/pause.png">Pause`;
-};
-
-const initGeneration = (mazeState) => {
+const initMaze = (mazeState) => {
 	if (generateSelect.value === "prim") initMazePrim(mazeState);
 	else if (generateSelect.value === "wilson") initMazeWilson(mazeState);
+	else if (generateSelect.value === "kruskal") initMazeKruskal(mazeState);
 	else initMazeDFS(mazeState);
 };
 
-const generateReset = (mazeState, solveState, columns, rows) => {
-	if (generateStepInterval != null) generatePause();
-	resetState(mazeState, solveState, columns, rows);	
-	initGeneration(mazeState);
-	drawMaze(canvas, mazeState, solveState);
+const generateMazeStep = (mazeState) => {
+	if (generateSelect.value === "prim") return generateMazeStepPrim(mazeState);
+	else if (generateSelect.value === "wilson") return generateMazeStepWilson(mazeState);
+	else if (generateSelect.value === "kruskal") return generateMazeStepKruskal(mazeState);
+	else return generateMazeStepDFS(mazeState);
 };
 
-const solveReset = (mazeState, solveState) => {
-	resetSolveState(solveState);
-	drawMaze(canvas, mazeState, solveState);
-};
-
-
-// Events
-generateButton.addEventListener("click", (event) => {
-	if (generateStepInterval != null) generatePause();
-
+const generateMaze = (mazeState) => {
 	if (generateSelect.value === "prim") {
 		// Prim's Algorithm
 		if (mazeState.frontiers.length === 0) {
@@ -96,6 +65,14 @@ generateButton.addEventListener("click", (event) => {
 		}
 		generateMazeWilson(mazeState);
 	}
+	else if (generateSelect.value === "kruskal") {
+		// Kruskal's Algorithm
+		if (mazeState.path.length <= 1) {
+			resetState(mazeState, solveState, columns, rows);
+			initMazeKruskal(mazeState);
+		}
+		generateMazeKruskal(mazeState);
+	}
 	else {
 		// Recursive Backtracking (DFS)
 		if (mazeState.path.length === 0) {
@@ -104,36 +81,76 @@ generateButton.addEventListener("click", (event) => {
 		}
 		generateMazeDFS(mazeState);
 	}
+}
 
+const drawMaze = (canvas, mazeState, solveState) => {
+	if (mazeState.isGenerated) drawGeneratedMaze(canvas, mazeState, solveState);
+	else if (generateSelect.value === "prim") drawPrim(canvas, mazeState);
+	else if (generateSelect.value === "wilson") drawWilson(canvas, mazeState);
+	else if (generateSelect.value === "kruskal") drawKruskal(canvas, mazeState);
+	else drawDFS(canvas, mazeState);
+};
+
+let generateStepInterval = null;
+
+const pauseGeneration = () => {
+	clearInterval(generateStepInterval);
+	generateStepInterval = null;
+	playGenerationButton.innerHTML = `<img src="img/play.png">Play`;
+};
+
+const playGeneration = (mazeState, solveState) => {
+	generateStepInterval = setInterval(() => {
+		if (generateSelect.value === "prim") {
+			if (generateMazeStepPrim(mazeState)) pauseGeneration();
+		}
+		else if (generateSelect.value === "wilson") {
+			if (generateMazeStepWilson(mazeState)) pauseGeneration();
+		}
+		else if (generateSelect.value === "kruskal") {
+			if (generateMazeStepKruskal(mazeState)) pauseGeneration();
+		}
+		else {
+			if (generateMazeStepDFS(mazeState)) pauseGeneration();
+		}
+		drawMaze(canvas, mazeState, solveState);
+	}, 1000 / stepsPerSecond);
+	playGenerationButton.innerHTML = `<img src="img/pause.png">Pause`;
+};
+
+const resetGeneration = (mazeState, solveState, columns, rows) => {
+	if (generateStepInterval != null) pauseGeneration();
+	resetState(mazeState, solveState, columns, rows);	
+	initMaze(mazeState);
+	drawMaze(canvas, mazeState, solveState);
+};
+
+const resetSolution = (mazeState, solveState) => {
+	resetSolveState(solveState);
+	drawMaze(canvas, mazeState, solveState);
+};
+
+
+// Events
+generateButton.addEventListener("click", (event) => {
+	if (generateStepInterval != null) pauseGeneration();
+	generateMaze(mazeState);
 	drawMaze(canvas, mazeState, solveState);
 });
 
-generatePlayButton.addEventListener("click", (event) => {
-	if (generateStepInterval != null) generatePause();
-	else generatePlay(mazeState, solveState);
+playGenerationButton.addEventListener("click", (event) => {
+	if (generateStepInterval != null) pauseGeneration();
+	else playGeneration(mazeState, solveState);
 });
 
 generateStepButton.addEventListener("click", (event) => {
-	if (generateStepInterval != null) generatePause();
-
-	if (generateSelect.value === "prim") {
-		// Prim's Algorithm
-		generateMazeStepPrim(mazeState);
-	}
-	else if (generateSelect.value === "wilson") {
-		// Wilson's Algorithm
-		generateMazeStepWilson(mazeState);
-	}
-	else {
-		// Recursive Backtracking (DFS)
-		generateMazeStepDFS(mazeState);
-	}
-
+	if (generateStepInterval != null) pauseGeneration();
+	generateMazeStep(mazeState);
 	drawMaze(canvas, mazeState, solveState);
 });
 
-generateResetButton.addEventListener("click", (event) => {
-	generateReset(mazeState, solveState, columns, rows);
+resetGenerationButton.addEventListener("click", (event) => {
+	resetGeneration(mazeState, solveState, columns, rows);
 });
 
 solveButton.addEventListener("click", (event) => {
@@ -150,16 +167,16 @@ solveStepButton.addEventListener("click", (event) => {
 	drawMaze(canvas, mazeState, solveState);
 });
 
-solveResetButton.addEventListener("click", (event) => {
-	solveReset(mazeState, solveState);
+resetSolutionButton.addEventListener("click", (event) => {
+	resetSolution(mazeState, solveState);
 });
 
 generateSelect.addEventListener("change", (event) => {
-	generateReset(mazeState, solveState, columns, rows);
+	resetGeneration(mazeState, solveState, columns, rows);
 });
 
 solveSelect.addEventListener("change", (event) => {
-	solveReset(mazeState, solveState);
+	resetSolution(mazeState, solveState);
 });
 
 window.addEventListener("resize", (event) => {
@@ -169,5 +186,5 @@ window.addEventListener("resize", (event) => {
 
 // Init
 resizeCanvas(canvas);
-initGeneration(mazeState);
+initMaze(mazeState);
 drawMaze(canvas, mazeState, solveState);

@@ -5,12 +5,7 @@ export const resizeCanvas = (canvas) => {
 	canvas.height = canvas.getBoundingClientRect().height;
 };
 
-export const drawMaze = (canvas, mazeState, solveState) => {
-	const ctx = canvas.getContext("2d");
-	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
-
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+const drawGridCells = (ctx, tileSize, mazeState) => {
 	for (let y = 0; y < mazeState.rows; y++) {
 		for (let x = 0; x < mazeState.columns; x++) {
 			if (isWall(mazeState, { x, y })) {
@@ -25,7 +20,29 @@ export const drawMaze = (canvas, mazeState, solveState) => {
 			}
 		}
 	}
+};
 
+const drawGridLines = (ctx, tileSize, columns, rows) => {
+	for (let y = 0; y < rows; y++) {
+		for (let x = 0; x < columns; x++) {
+			ctx.strokeStyle = "#222222";
+			ctx.lineWidth = 1;
+			ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+		}
+	}
+};
+
+const drawPath = (ctx, tileSize, mazeState) => {
+	for (let i = 0; i < mazeState.path.length; i++) {
+		// Path
+		const [node, edge] = mazeState.path[i];
+		ctx.fillStyle = "#5555ff";
+		ctx.fillRect(node.x * tileSize, node.y * tileSize, tileSize, tileSize);
+		ctx.fillRect(edge.x * tileSize, edge.y * tileSize, tileSize, tileSize);
+	}
+};
+
+const drawFrontiers = (ctx, tileSize, mazeState) => {
 	for (let i = 0; i < mazeState.frontiers.length; i++) {
 		// Frontier
 		const [node, edge] = mazeState.frontiers[i];
@@ -33,14 +50,53 @@ export const drawMaze = (canvas, mazeState, solveState) => {
 		ctx.fillRect(node.x * tileSize, node.y * tileSize, tileSize, tileSize);
 		ctx.fillRect(edge.x * tileSize, edge.y * tileSize, tileSize, tileSize);
 	}
+};
 
-	for (let i = 0; i < mazeState.path.length; i++) {
-		// Random Walk
-		const [node, edge] = mazeState.path[i];
-		ctx.fillStyle = "#5555ff";
-		ctx.fillRect(node.x * tileSize, node.y * tileSize, tileSize, tileSize);
-		ctx.fillRect(edge.x * tileSize, edge.y * tileSize, tileSize, tileSize);
-	}
+export const drawDFS = (canvas, mazeState) => {
+	const ctx = canvas.getContext("2d");
+	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	drawGridCells(ctx, tileSize, mazeState);
+	drawPath(ctx, tileSize, mazeState);
+	drawGridLines(ctx, tileSize, mazeState.columns, mazeState.rows);
+};
+
+export const drawPrim = (canvas, mazeState) => {
+	const ctx = canvas.getContext("2d");
+	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	drawGridCells(ctx, tileSize, mazeState);
+	drawFrontiers(ctx, tileSize, mazeState);
+	drawGridLines(ctx, tileSize, mazeState.columns, mazeState.rows);
+};
+
+export const drawWilson = (canvas, mazeState) => {
+	const ctx = canvas.getContext("2d");
+	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	drawGridCells(ctx, tileSize, mazeState);
+	drawPath(ctx, tileSize, mazeState);
+	drawGridLines(ctx, tileSize, mazeState.columns, mazeState.rows);
+};
+
+export const drawKruskal = (canvas, mazeState) => {
+	const ctx = canvas.getContext("2d");
+	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	drawGridCells(ctx, tileSize, mazeState);
+	drawGridLines(ctx, tileSize, mazeState.columns, mazeState.rows);
+};
+
+export const drawGeneratedMaze = (canvas, mazeState, solveState) => {
+	const ctx = canvas.getContext("2d");
+	const tileSize = Math.min(canvas.width / mazeState.columns, canvas.height / mazeState.rows);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	drawGridCells(ctx, tileSize, mazeState);
 
 	for (let i = 0; i < solveState.path.length; i++) {
 		const step = solveState.path[i];
@@ -61,12 +117,5 @@ export const drawMaze = (canvas, mazeState, solveState) => {
 		ctx.fillRect(solveState.end.x * tileSize, solveState.end.y * tileSize, tileSize, tileSize);
 	}
 
-	for (let y = 0; y < mazeState.rows; y++) {
-		for (let x = 0; x < mazeState.columns; x++) {
-			// Grid Lines
-			ctx.strokeStyle = "#222222";
-			ctx.lineWidth = 1;
-			ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
-		}
-	}
+	drawGridLines(ctx, tileSize, mazeState.columns, mazeState.rows);
 };

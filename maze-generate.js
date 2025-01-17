@@ -18,6 +18,7 @@ export const resetMazeState = (mazeState, columns, rows) => {
 	mazeState.frontiers = [];
 	mazeState.unvisited = [];
 	mazeState.path = [];
+	mazeState.edges = [];
 	mazeState.lastDirection = { dx: 0, dy: 0 };
 };
 
@@ -229,4 +230,63 @@ export const generateMazeStepWilson = (mazeState) => {
 
 export const generateMazeWilson = (mazeState) => {
 	while (!generateMazeStepWilson(mazeState));
+};
+
+export const initMazeKruskal = (mazeState) => {
+	for (let y = 0; y < mazeState.rows; y++) {
+		for (let x = 0; x < mazeState.columns; x++) {
+			if (x % 2 === 0 && y % 2 === 0) {
+
+				// Add all nodes to a list of sets
+				mazeState.path.push([toKey({ x, y })]);
+				
+				// Add all edges to a set
+				if (x < mazeState.columns - 2) mazeState.edges.push({ x: x + 1, y });
+				if (y < mazeState.rows - 2) mazeState.edges.push({ x, y: y + 1 });
+			}
+		}
+	}
+};
+
+export const generateMazeStepKruskal = (mazeState) => {
+	if (mazeState.path.length === 1) {
+		console.log("Maze has been generated");
+		return true;
+	}
+
+	let randomIndex, currentEdge, nodeA, nodeB, pathAIndex, pathBIndex = null;
+	do {
+		// Select a random edge and remove from the set of edges
+		randomIndex = Math.floor(Math.random() * mazeState.edges.length);
+		currentEdge = mazeState.edges.splice(randomIndex, 1)[0];
+		
+		// Get nodes depending on horizontal or vertical edge
+		nodeA = (currentEdge.x % 2 === 1) ? { x: currentEdge.x - 1 , y: currentEdge.y } : { x: currentEdge.x , y: currentEdge.y - 1 };
+		nodeB = (currentEdge.x % 2 === 1) ? { x: currentEdge.x + 1 , y: currentEdge.y } : { x: currentEdge.x , y: currentEdge.y + 1 };
+		
+		// Check if nodes are in the same path
+		for (let i = 0; i < mazeState.path.length; i++) {
+			const path = mazeState.path[i];
+			if (path.includes(toKey(nodeA))) pathAIndex = i;
+			if (path.includes(toKey(nodeB))) pathBIndex = i;
+		}
+	}
+	while (pathAIndex === pathBIndex);
+
+	// Merge paths A and B
+	const pathA = mazeState.path[pathAIndex];
+	const pathB = mazeState.path[pathBIndex];
+	if (pathA.length === 1) setPassage(mazeState, fromKey(pathA[0]));
+	if (pathB.length === 1) setPassage(mazeState, fromKey(pathB[0]));
+	mazeState.path[pathAIndex].push(...pathB);
+	mazeState.path.splice(pathBIndex, 1);
+	setPassage(mazeState, currentEdge);
+
+	if ((mazeState.path.length === 1)) mazeState.isGenerated = true;
+
+	return mazeState.isGenerated;
+};
+
+export const generateMazeKruskal = (mazeState) => {
+	while (!generateMazeStepKruskal(mazeState));
 };
