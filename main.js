@@ -1,16 +1,16 @@
 import { createMazeState, resetMazeState,
-	initMazeDFS, generateMazeStepDFS, generateMazeDFS,
-	initMazePrim, generateMazeStepPrim, generateMazePrim,
-	initMazeWilson, generateMazeStepWilson, generateMazeWilson,
-	initMazeKruskal, generateMazeStepKruskal, generateMazeKruskal
+	initGenerationDFS, generateMazeStepDFS, generateMazeDFS,
+	initGenerationPrim, generateMazeStepPrim, generateMazePrim,
+	initGenerationWilson, generateMazeStepWilson, generateMazeWilson,
+	initGenerationKruskal, generateMazeStepKruskal, generateMazeKruskal
 } from "./maze-generate.js";
-import { createSolveState, resetSolveState, solveMazeDFS } from "./maze-solve.js";
+import { createSolveState, resetSolveState, initSolutionDFS, solveMazeStepDFS, solveMazeDFS } from "./maze-solve.js";
 import { resizeCanvas, drawDFS, drawPrim, drawWilson, drawKruskal, drawGeneratedMaze } from "./maze-render.js";
 
 // DOM
 const canvas = document.getElementById("maze");
 const generateButton = document.getElementById("generate-button");
-const playGenerationButton = document.getElementById("generate-play-button");
+const generatePlayButton = document.getElementById("generate-play-button");
 const generateStepButton = document.getElementById("generate-step-button");
 const resetGenerationButton = document.getElementById("generate-reset-button");
 const solveButton = document.getElementById("solve-button");
@@ -34,11 +34,11 @@ const resetState = (mazeState, solveState, columns, rows) => {
 	resetSolveState(solveState);
 };
 
-const initMaze = (mazeState) => {
-	if (generateSelect.value === "prim") initMazePrim(mazeState);
-	else if (generateSelect.value === "wilson") initMazeWilson(mazeState);
-	else if (generateSelect.value === "kruskal") initMazeKruskal(mazeState);
-	else initMazeDFS(mazeState);
+const initGeneration = (mazeState) => {
+	if (generateSelect.value === "prim") initGenerationPrim(mazeState);
+	else if (generateSelect.value === "wilson") initGenerationWilson(mazeState);
+	else if (generateSelect.value === "kruskal") initGenerationKruskal(mazeState);
+	else initGenerationDFS(mazeState);
 };
 
 const generateMazeStep = (mazeState) => {
@@ -53,7 +53,7 @@ const generateMaze = (mazeState) => {
 		// Prim's Algorithm
 		if (mazeState.frontiers.length === 0) {
 			resetState(mazeState, solveState, columns, rows);
-			initMazePrim(mazeState);
+			initGenerationPrim(mazeState);
 		}
 		generateMazePrim(mazeState);
 	}
@@ -61,7 +61,7 @@ const generateMaze = (mazeState) => {
 		// Wilson's Algorithm
 		if (mazeState.unvisited.length === 0) {
 			resetState(mazeState, solveState, columns, rows);
-			initMazeWilson(mazeState);
+			initGenerationWilson(mazeState);
 		}
 		generateMazeWilson(mazeState);
 	}
@@ -69,7 +69,7 @@ const generateMaze = (mazeState) => {
 		// Kruskal's Algorithm
 		if (mazeState.path.length <= 1) {
 			resetState(mazeState, solveState, columns, rows);
-			initMazeKruskal(mazeState);
+			initGenerationKruskal(mazeState);
 		}
 		generateMazeKruskal(mazeState);
 	}
@@ -77,11 +77,23 @@ const generateMaze = (mazeState) => {
 		// Recursive Backtracking (DFS)
 		if (mazeState.path.length === 0) {
 			resetState(mazeState, solveState, columns, rows);
-			initMazeDFS(mazeState);
+			initGenerationDFS(mazeState);
 		}
 		generateMazeDFS(mazeState);
 	}
 }
+
+const solveMazeStep = (mazeState, solveState) => {
+	return solveMazeStepDFS(mazeState, solveState);
+};
+
+const solveMaze = (mazeState, solveState) => {
+	if (solveState.currentPath.length === 0) {
+		resetSolveState(solveState);
+		initSolutionDFS(mazeState, solveState);
+	}
+	solveMazeDFS(mazeState, solveState);
+};
 
 const drawMaze = (canvas, mazeState, solveState) => {
 	if (mazeState.isGenerated) drawGeneratedMaze(canvas, mazeState, solveState);
@@ -96,7 +108,7 @@ let generateStepInterval = null;
 const pauseGeneration = () => {
 	clearInterval(generateStepInterval);
 	generateStepInterval = null;
-	playGenerationButton.innerHTML = `<img src="img/play.png">Play`;
+	generatePlayButton.innerHTML = `<img src="img/play.png">Play`;
 };
 
 const playGeneration = (mazeState, solveState) => {
@@ -115,18 +127,37 @@ const playGeneration = (mazeState, solveState) => {
 		}
 		drawMaze(canvas, mazeState, solveState);
 	}, 1000 / stepsPerSecond);
-	playGenerationButton.innerHTML = `<img src="img/pause.png">Pause`;
+	generatePlayButton.innerHTML = `<img src="img/pause.png">Pause`;
 };
 
 const resetGeneration = (mazeState, solveState, columns, rows) => {
 	if (generateStepInterval != null) pauseGeneration();
 	resetState(mazeState, solveState, columns, rows);	
-	initMaze(mazeState);
+	initGeneration(mazeState);
 	drawMaze(canvas, mazeState, solveState);
+};
+
+let solveStepInterval = null;
+
+const pauseSolution = () => {
+	if (solveStepInterval == null) return;
+	clearInterval(solveStepInterval);
+	solveStepInterval = null;
+	solvePlayButton.innerHTML = `<img src="img/play.png">Play`;
+};
+
+const playSolution = (mazeState, solveState) => {
+	solveStepInterval = setInterval(() => {
+		if (solveState.currentPath.length === 0 && !solveState.isSolved) initSolutionDFS(mazeState, solveState);
+		if (solveMazeStepDFS(mazeState, solveState)) pauseSolution();
+		drawMaze(canvas, mazeState, solveState);
+	}, 1000 / stepsPerSecond);
+	solvePlayButton.innerHTML = `<img src="img/pause.png">Pause`;
 };
 
 const resetSolution = (mazeState, solveState) => {
 	resetSolveState(solveState);
+	initSolutionDFS(mazeState, solveState);
 	drawMaze(canvas, mazeState, solveState);
 };
 
@@ -138,7 +169,7 @@ generateButton.addEventListener("click", (event) => {
 	drawMaze(canvas, mazeState, solveState);
 });
 
-playGenerationButton.addEventListener("click", (event) => {
+generatePlayButton.addEventListener("click", (event) => {
 	if (generateStepInterval != null) pauseGeneration();
 	else playGeneration(mazeState, solveState);
 });
@@ -154,16 +185,19 @@ resetGenerationButton.addEventListener("click", (event) => {
 });
 
 solveButton.addEventListener("click", (event) => {
-	resetSolveState(solveState);
-	solveMazeDFS(mazeState, solveState);
+	pauseSolution();
+	solveMaze(mazeState, solveState);
 	drawMaze(canvas, mazeState, solveState);
 });
 
 solvePlayButton.addEventListener("click", (event) => {
-	drawMaze(canvas, mazeState, solveState);
+	if (solveStepInterval != null) pauseSolution();
+	else playSolution(mazeState, solveState);
 });
 
 solveStepButton.addEventListener("click", (event) => {
+	pauseSolution();
+	solveMazeStep(mazeState, solveState);
 	drawMaze(canvas, mazeState, solveState);
 });
 
@@ -186,5 +220,5 @@ window.addEventListener("resize", (event) => {
 
 // Init
 resizeCanvas(canvas);
-initMaze(mazeState);
+initGeneration(mazeState);
 drawMaze(canvas, mazeState, solveState);

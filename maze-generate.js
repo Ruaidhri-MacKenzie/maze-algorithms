@@ -13,7 +13,7 @@ const directions = [
 export const resetMazeState = (mazeState, columns, rows) => {
 	mazeState.columns = columns;
 	mazeState.rows = rows;
-	mazeState.maze = new Array(rows).fill(0).map(row => new Array(columns).fill(cellType.WALL));
+	mazeState.cells = new Array(rows).fill(0).map(row => new Array(columns).fill(cellType.WALL));
 	mazeState.isGenerated = false;
 	mazeState.frontiers = [];
 	mazeState.unvisited = [];
@@ -29,10 +29,15 @@ export const createMazeState = (columns, rows) => {
 };
 
 export const isInBounds = (mazeState, cell) => cell.x >= 0 && cell.x < mazeState.columns && cell.y >= 0 && cell.y < mazeState.rows;
-export const isWall = (mazeState, cell) => mazeState.maze[cell.y][cell.x] === cellType.WALL;
-export const setWall = (mazeState, cell) => mazeState.maze[cell.y][cell.x] = cellType.WALL;
-export const isPassage = (mazeState, cell) => mazeState.maze[cell.y][cell.x] === cellType.PASSAGE;
-export const setPassage = (mazeState, cell) => mazeState.maze[cell.y][cell.x] = cellType.PASSAGE;
+export const isWall = (mazeState, cell) => mazeState.cells[cell.y][cell.x] === cellType.WALL;
+export const setWall = (mazeState, cell) => mazeState.cells[cell.y][cell.x] = cellType.WALL;
+export const isPassage = (mazeState, cell) => mazeState.cells[cell.y][cell.x] === cellType.PASSAGE;
+export const setPassage = (mazeState, cell) => mazeState.cells[cell.y][cell.x] = cellType.PASSAGE;
+export const isNode = (cell) => (cell.x % 2) + (cell.y % 2) === 0;
+export const isEdge = (cell) => (cell.x % 2) + (cell.y % 2) === 1;
+export const getRandomNode = (mazeState) => {
+	return { x: Math.floor(Math.random() * (mazeState.rows / 2)) * 2, y: Math.floor(Math.random() * (mazeState.columns / 2)) * 2 };
+};
 
 const toKey = (cell) => `${cell.x},${cell.y}`;
 const fromKey = (key) => {
@@ -47,7 +52,7 @@ const removeFromUnvisited = (mazeState, cell) => {
 	mazeState.unvisited = mazeState.unvisited.filter(key => toKey(cell) !== key);
 };
 
-export const initMazeDFS = (mazeState) => {
+export const initGenerationDFS = (mazeState) => {
 	// Create list of all nodes
 	mazeState.unvisited = [];
 	for (let y = 0; y < mazeState.rows; y++) {
@@ -99,8 +104,8 @@ export const generateMazeDFS = (mazeState) => {
 	while (!generateMazeStepDFS(mazeState));
 };
 
-export const initMazePrim = (mazeState) => {
-	const startNode = { x: Math.floor(Math.random() * (mazeState.columns / 2)) * 2, y: Math.floor(Math.random() * (mazeState.rows / 2)) * 2 };
+export const initGenerationPrim = (mazeState) => {
+	const startNode = getRandomNode(mazeState);
 	mazeState.frontiers = [[startNode, startNode]];
 };
 
@@ -110,27 +115,23 @@ export const generateMazeStepPrim = (mazeState) => {
 		return true;
 	}
 
-	const randomIndex = Math.floor(Math.random() * mazeState.frontiers.length);
-	const [node, edge] = mazeState.frontiers[randomIndex];
+	const [currentNode, currentEdge] = mazeState.frontiers[Math.floor(Math.random() * mazeState.frontiers.length)];
+	setPassage(mazeState, currentNode);
+	setPassage(mazeState, currentEdge);
 
-	// Check Frontiers
-	if (isWall(mazeState, node)) {
-		setPassage(mazeState, node);
-		setPassage(mazeState, edge);
-
-		for (let i = 0; i < directions.length; i++) {
-			const direction = directions[i];
-			const nextNode = { x: node.x + (direction.dx * 2), y: node.y + (direction.dy * 2) };
-			const nextEdge = { x: node.x + direction.dx, y: node.y + direction.dy };
-			if (isInBounds(mazeState, nextNode) && isWall(mazeState, nextNode)) {
-				mazeState.frontiers.push([nextNode, nextEdge]);
-			}
+	for (let i = 0; i < directions.length; i++) {
+		const direction = directions[i];
+		const nextNode = { x: currentNode.x + (direction.dx * 2), y: currentNode.y + (direction.dy * 2) };
+		const nextEdge = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
+		if (isInBounds(mazeState, nextNode) && isWall(mazeState, nextNode)) {
+			mazeState.frontiers.push([nextNode, nextEdge]);
 		}
 	}
 
-	mazeState.frontiers.splice(randomIndex, 1);
-	if (mazeState.frontiers.length === 0) mazeState.isGenerated = true;
+	// Remove all references to this node from frontiers
+	mazeState.frontiers = mazeState.frontiers.filter(([node, edge]) => !(node.x === currentNode.x && node.y === currentNode.y));
 
+	if (mazeState.frontiers.length === 0) mazeState.isGenerated = true;
 	return mazeState.isGenerated;
 };
 
@@ -186,7 +187,7 @@ const randomWalkStep = (mazeState) => {
 	return false;
 };
 
-export const initMazeWilson = (mazeState) => {
+export const initGenerationWilson = (mazeState) => {
 	// Create list of all nodes
 	mazeState.unvisited = [];
 	for (let y = 0; y < mazeState.rows; y++) {
@@ -232,7 +233,7 @@ export const generateMazeWilson = (mazeState) => {
 	while (!generateMazeStepWilson(mazeState));
 };
 
-export const initMazeKruskal = (mazeState) => {
+export const initGenerationKruskal = (mazeState) => {
 	for (let y = 0; y < mazeState.rows; y++) {
 		for (let x = 0; x < mazeState.columns; x++) {
 			if (x % 2 === 0 && y % 2 === 0) {
@@ -265,10 +266,12 @@ export const generateMazeStepKruskal = (mazeState) => {
 		nodeB = (currentEdge.x % 2 === 1) ? { x: currentEdge.x + 1 , y: currentEdge.y } : { x: currentEdge.x , y: currentEdge.y + 1 };
 		
 		// Check if nodes are in the same path
+		const nodeAKey = toKey(nodeA);
+		const nodeBKey = toKey(nodeB);
 		for (let i = 0; i < mazeState.path.length; i++) {
 			const path = mazeState.path[i];
-			if (path.includes(toKey(nodeA))) pathAIndex = i;
-			if (path.includes(toKey(nodeB))) pathBIndex = i;
+			if (path.includes(nodeAKey)) pathAIndex = i;
+			if (path.includes(nodeBKey)) pathBIndex = i;
 		}
 	}
 	while (pathAIndex === pathBIndex);

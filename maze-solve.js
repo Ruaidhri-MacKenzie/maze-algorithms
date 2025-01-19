@@ -1,4 +1,4 @@
-import { isInBounds, isWall } from "./maze-generate.js";
+import { isInBounds, isPassage, getRandomNode } from "./maze-generate.js";
 
 const directions = [
 	{ dx: -1, dy: 0 },
@@ -13,6 +13,7 @@ export const resetSolveState = (solveState) => {
 	solveState.path = [];
 	solveState.currentPath = [];
 	solveState.checkedPositions = [];
+	solveState.isSolved = false;
 };
 
 export const createSolveState = () => {
@@ -21,70 +22,81 @@ export const createSolveState = () => {
 	return solveState;
 };
 
-const isStart = (solveState, position) => solveState.start.x === position.x && solveState.start.y === position.y;
-const isEnd = (solveState, position) => solveState.end.x === position.x && solveState.end.y === position.y;
-const isChecked = (solveState, position) => {
+const isStart = (solveState, cell) => solveState.start.x === cell.x && solveState.start.y === cell.y;
+const isEnd = (solveState, cell) => solveState.end.x === cell.x && solveState.end.y === cell.y;
+const isChecked = (solveState, cell) => {
 	for (let i = 0; i < solveState.checkedPositions.length; i++) {
-		if (solveState.checkedPositions[i].x === position.x && solveState.checkedPositions[i].y === position.y) return true;
+		if (solveState.checkedPositions[i].x === cell.x && solveState.checkedPositions[i].y === cell.y) return true;
 	}
 	return false;
 };
 
-const checkNeighbours = (mazeState, solveState, position) => {
-	if (isEnd(solveState, position)) {
-		if (solveState.path.length === 0 || solveState.currentPath.length < solveState.path.length) {
-			solveState.path = [...solveState.currentPath];
-		}
+export const initSolutionDFS = (mazeState, solveState) => {
+	if (!mazeState.isGenerated) {
+		console.log("Maze must be generated before solving")
 		return;
 	}
 
-	solveState.checkedPositions.push(position);
-
-	for (let i = 0; i < directions.length; i++) {
-		const direction = directions[i];
-		const nextPosition = { x: position.x + direction.dx, y: position.y + direction.dy };
-		if (isInBounds(mazeState, nextPosition) && !isWall(mazeState, nextPosition) && !isChecked(solveState, nextPosition)) {
-			solveState.currentPath.push(nextPosition);
-			checkNeighbours(mazeState, solveState, nextPosition);
-			solveState.currentPath.pop();
-		}
+	// Set start position
+	solveState.start = getRandomNode(mazeState);
+	
+	// Set end position
+	do {
+		solveState.end = getRandomNode(mazeState);
 	}
+	while (isStart(solveState, solveState.end));
+
+	solveState.currentPath = [[solveState.start, solveState.start]];
+	solveState.checkedPositions = [solveState.start];
 };
 
 export const solveMazeStepDFS = (mazeState, solveState) => {
 	if (!mazeState.isGenerated) {
 		console.log("Maze must be generated before solving");
-		return;
+		return true;
 	}
 	
-	if (solveState.start.x == null || solveState.start.y == null || solveState.end.x == null || solveState.end.y == null) {
-		console.log("Start and end points must be set");
-		return;
+	if (solveState.currentPath.length === 0) {
+		if (solveState.isSolved) {
+			console.log("Maze has been solved");
+			return true;
+		}
+		else {
+			initSolutionDFS(mazeState, solveState);
+		}
 	}
 
-	
+	const currentNode = solveState.currentPath[solveState.currentPath.length - 1][0];
+	if (isEnd(solveState, currentNode)) {
+		solveState.path = [...solveState.currentPath];
+		solveState.currentPath = [];
+		solveState.isSolved = true;
+		return true;
+	}
+
+	const neighbours = [];
+	for (let i = 0; i < directions.length; i++) {
+		const direction = directions[i];
+		const newNode = { x: currentNode.x + (direction.dx * 2), y: currentNode.y + (direction.dy * 2) };
+		const newEdge = { x: currentNode.x + direction.dx, y: currentNode.y + direction.dy };
+		if (isInBounds(mazeState, newNode) && isPassage(mazeState, newEdge) && !isChecked(solveState, newNode)) {
+			neighbours.push([newNode, newEdge]);
+		}
+	}
+
+	if (neighbours.length > 0) {
+		const [node, edge] = neighbours[Math.floor(Math.random() * neighbours.length)];
+		solveState.currentPath.push([node, edge]);
+		solveState.checkedPositions.push(node);
+	}
+	else if (solveState.currentPath.length > 0) {
+		solveState.currentPath.pop();
+		if (solveState.currentPath.length === 0) solveState.isSolved = true;
+	}
+
+	return solveState.isSolved;
 };
 
 export const solveMazeDFS = (mazeState, solveState) => {
-	if (!mazeState.isGenerated) {
-		console.log("Maze must be generated before solving");
-		return;
-	}
-	
-	// Set start position
-	do {
-		solveState.start.x = Math.floor(Math.random() * mazeState.columns);
-		solveState.start.y = Math.floor(Math.random() * mazeState.rows);
-	}
-	while (isWall(mazeState, solveState.start));
-
-	// Set end position
-	do {
-		solveState.end.x = Math.floor(Math.random() * mazeState.columns);
-		solveState.end.y = Math.floor(Math.random() * mazeState.rows);
-	}
-	while (isWall(mazeState, solveState.end) || isStart(solveState, solveState.end));
-	
-	solveState.currentPath = [solveState.start];
-	checkNeighbours(mazeState, solveState, solveState.start);
+	while (!solveMazeStepDFS(mazeState, solveState));
 };
